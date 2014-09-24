@@ -203,32 +203,36 @@ int ExtractUrlFromSo::getSearchResultContainer(const char* src,
                                                size_t& result_loca,
                                                const string& result_tag="<ul ")
 {
+    result_loca = -1;
     size_t src_iter=0;
-    size_t content_position=0;
-    size_t attribute_position=0;
+    size_t next_iter=0;
+    size_t temp_loca=0;
     size_t curr_len=src_len;
     int flag=0;
 
     string attribute_value;
     while(src_iter<src_len)
     {
-
+        next_iter = 0;
         flag = extract_obj->extractTag(src,curr_len,
                                        result_tag.c_str(),
                                        result_tag.size(),
-                                       content_position);
+                                       next_iter);
         if(flag==-1)
         {
             return -1;
         }
-        src += content_position;
-        src_iter += content_position;
-        curr_len -= content_position;
+
+        src += next_iter;
+        src_iter += next_iter;
+        temp_loca = src_iter;
+        curr_len -= next_iter;
         //after got the need tag,check the attribute of the tag;
-        flag = extract_obj->getAttributeOfTag(src,curr_len,id.first,attribute_position);
-        src += attribute_position;
-        src_iter += attribute_position;
-        curr_len -= attribute_position;
+        next_iter = 0;
+        flag = extract_obj->getAttributeOfTag(src,curr_len,id.first,next_iter);
+        src += next_iter;
+        src_iter += next_iter;
+        curr_len -= next_iter;
         if(flag ==-1)
         {
             flag =0;
@@ -238,10 +242,13 @@ int ExtractUrlFromSo::getSearchResultContainer(const char* src,
         }
         extract_obj->extract(src,curr_len,result_tag.c_str(),result_tag.size(),attribute_value);
         if(!attribute_value.compare(id.second))
-            break;
+        {
+            result_loca = temp_loca;
+            return 0;
+        }
     }
-    result_loca = src_iter;
-    return 0;
+    //result_loca = temp_loca;
+    return -1;
 }
 //get all the urls of the search result;
 int ExtractUrlFromSo::getUrls(const char* src,size_t src_len,
@@ -250,9 +257,8 @@ int ExtractUrlFromSo::getUrls(const char* src,size_t src_len,
     size_t curr_iter=0;
     size_t next_iter=0;
 
-    int flag=0;
     //get the search result div
-    getSearchResultContainer(src,src_len,make_pair<string,string>("id","m-result"),next_iter,"<ul ");
+    getSearchResultContainer(src,src_len,make_pair<string,string>("id","m-result"),next_iter);
     if(next_iter==curr_iter)
         return -1;
     src += next_iter;
@@ -298,7 +304,7 @@ int ExtractUrlFromSo:: extractUrl(const char* src, size_t src_len,bool& is_last,
     {
         string id_value;
         extract_obj->extract(src,src_len,"id",2,id_value);
-        if(id_value.compare("last"))
+        if (!id_value.compare("last"))
             is_last = true;
         else is_last = false;
     }
