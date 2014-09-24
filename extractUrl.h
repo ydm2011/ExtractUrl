@@ -88,18 +88,20 @@ private:
 class ExtractUrlFromSo{
 public:
     ExtractUrlFromSo(ExtractContentInterface* extractAlgorithm);
-    //get the
+    //set the parameters to determain which to extract
     void init(const std::string& layers);
-
+    //get the laocation of the search result container
     int getSearchResultContainer(const char* src,size_t src_len,
                                  const std::pair<std::string,std::string>& id,
                                  size_t& result_loca,
                                  const std::string& result_tag);
+    //get all the urls of the search result;
     int getUrls(const char* src,
                 size_t src_len,
                 const std::string& url_tag,
                 std::list<std::string>& urls);
 protected:
+    //extract the url from the given tag
     int extractUrl(const char* src, size_t src_len,bool& is_last,std::string& url,size_t& curr_iter);
 private:
     ExtractContentInterface* extract_obj;

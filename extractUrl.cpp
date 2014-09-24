@@ -190,7 +190,7 @@ ExtractUrlFromSo::ExtractUrlFromSo(ExtractContentInterface* extract_obj)
 {
     this->extract_obj = extract_obj;
 }
-
+//the last version will complete this function
 void ExtractUrlFromSo::init(const string &layers)
 {
     ;
@@ -243,7 +243,7 @@ int ExtractUrlFromSo::getSearchResultContainer(const char* src,
     result_loca = src_iter;
     return 0;
 }
-//
+//get all the urls of the search result;
 int ExtractUrlFromSo::getUrls(const char* src,size_t src_len,
                               const string& url_tag,list<string>& urls)
 {
@@ -272,6 +272,7 @@ int ExtractUrlFromSo::getUrls(const char* src,size_t src_len,
     return 0;
 }
 
+//extract the url from the container result list
 int ExtractUrlFromSo:: extractUrl(const char* src, size_t src_len,bool& is_last,string& url,size_t& curr_iter)
 {
     curr_iter=0;
