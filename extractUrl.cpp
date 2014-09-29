@@ -19,7 +19,15 @@
 #include <ctime>
 #include "extractUrl.h"
 #include <memory>
+
+#include "util.h"
 using namespace std;
+
+
+/* *************************************************************************** */
+
+
+
 // get the start position of the given tag;
 int  ExtractBySunday::extractTag(const char* src,
                                  size_t src_len,
@@ -133,7 +141,7 @@ int ExtractBySunday::getAttributeOfTag(const char* src,size_t src_len,
 {
     if(!src||attribute_name.empty())
     {
-        cout<<"wrong parameters!"<<endl;
+        cout<<"wrong parameters in:ExtractBySunday.getAttributeOfTag()!"<<endl;
     }
     tag_container.clear();
     size_t src_iter=0;
@@ -181,7 +189,74 @@ int ExtractBySunday::getAttributeOfTag(const char* src,size_t src_len,
     return -1;
 }
 
+/*************************************************************************8**/
+//this class was the interface of the extract url class
+//the layers stytle: <tag:id=first; <tag:class=dream;  the end of the parameter must
+//add the ";"notation
+bool ExtractUrlInterface::parseLayerTag(const string& layer_tags,
+                                        int total_layer,
+                                        list<TagNode>& tag_key_value)
+{
+    int beg=0;
+    const char* para = layer_tags.c_str();
+    int length = layer_tags.size();
+    bool flag=false;
+    string temp;
+    TagNode temp_node;
+    for(int i=0; i<length; ++i )
+    {
 
+        if((is_character(para[i])||flag)&&para[i]!=';')
+        {
+            if(beg == 0||flag)
+               beg = i;
+            temp.push_back(para[i]);
+            continue;
+        }
+        if (para[i]==' ')
+        {
+            continue;
+        }
+        if(beg!=0){
+           switch(para[i]){
+           case ':':
+               temp_node.tag = temp;
+               break;
+           case '=':
+               temp_node.attribute_name = temp;
+               flag = true;
+               break;
+           case ';':
+               temp_node.attribute_value = temp;
+               tag_key_value.push_back(temp_node);
+               flag = false;
+               break;
+           default:
+               tag_key_value.clear();
+               return false;
+           }
+           temp.clear();
+           beg = 0;
+        }
+
+    }
+    if(layer_tags[length-1]!=';')
+    {
+        temp_node.attribute_value = temp;
+        tag_key_value.push_back(temp_node);
+    }
+    if (tag_key_value.size()!=total_layer)
+    {
+        cout<<"layers_tag num does't match the input total_layer"<<std::endl;
+        tag_key_value.clear();
+        return false;
+    }
+    return true;
+}
+
+
+
+/* *************************************************************************** */
 
 
 //this just extract the url from the so.com search result
@@ -191,7 +266,7 @@ ExtractUrlFromSo::ExtractUrlFromSo(ExtractContentInterface* extract_obj)
     this->extract_obj = extract_obj;
 }
 //the last version will complete this function
-void ExtractUrlFromSo::init(const string &layers)
+void ExtractUrlFromSo::init(const string &tag_layers,int layers)
 {
     ;
 }
@@ -328,12 +403,153 @@ int ExtractUrlFromSo:: extractUrl(const char* src, size_t src_len,bool& is_last,
     return 0;
 }
 
+//this  is the instancce of the ExtractUrlFrom Baidu.com
+ExtractUrlFromBaidu::ExtractUrlFromBaidu(ExtractContentInterface* extractAlgorithm)
+:extract_obj(extractAlgorithm)
+{
+    //["1","2","3","4","5","6","7","8","9","10"];
+    list_id_baidu.push_back("1");
+    list_id_baidu.push_back("2");
+    list_id_baidu.push_back("3");
+    list_id_baidu.push_back("4");
+    list_id_baidu.push_back("5");
+    list_id_baidu.push_back("6");
+    list_id_baidu.push_back("7");
+    list_id_baidu.push_back("8");
+    list_id_baidu.push_back("9");
+    list_id_baidu.push_back("10");
+}
+//parse the parameters;
+void ExtractUrlFromBaidu::init(const string& layers_tag,int layers)
+{
+    if (!parseLayerTag(layers_tag,layers,tag_key_value))
+    {
+        cout<<"Wrong parameters in ExtractUrlFromBaidu::init() function"<<endl;
+    }
+}
+//get the result container of the search result
+int ExtractUrlFromBaidu::getSearchResultContainer(const char* src,
+                                                  size_t src_len,
+                                                  const pair<string,string>& id,
+                                                  size_t& result_loca,
+                                                  const string& result_tag)
+{
+    result_loca = -1;
+    size_t src_iter=0;
+    size_t next_iter=0;
+    size_t temp_loca=0;
+    size_t curr_len=src_len;
+    int flag=0;
 
+    string attribute_value;
+    while(src_iter<src_len)
+    {
+        next_iter = 0;
+        flag = extract_obj->extractTag(src,curr_len,
+                                       result_tag.c_str(),
+                                       result_tag.size(),
+                                       next_iter);
+        if(flag==-1)
+        {
+            return -1;
+        }
 
+        src += next_iter;
+        src_iter += next_iter;
+        temp_loca = src_iter;
+        curr_len -= next_iter;
+        //after got the need tag,check the attribute of the tag;
+        next_iter = 0;
+        flag = extract_obj->getAttributeOfTag(src,curr_len,id.first,next_iter);
+        src += next_iter;
+        src_iter += next_iter;
+        curr_len -= next_iter;
+        if(flag ==-1)
+        {
+            flag =0;
+            ++src;
+            ++src_iter;
+            continue;
+        }
+        extract_obj->extract(src,curr_len,result_tag.c_str(),result_tag.size(),attribute_value);
+        if(!attribute_value.compare(id.second))
+        {
+            result_loca = temp_loca;
+            return 0;
+        }
+    }
+    //result_loca = temp_loca;
+    return -1;
+}
 
+int ExtractUrlFromBaidu::getUrls(const char *src, size_t src_len, const string &url_tag, std::list<string> &urls)
+{
+    size_t curr_iter=0;
+    size_t next_iter=0;
+    urls.clear();
+    //get the search result div,<div is fifth parameter;
+    getSearchResultContainer(src,src_len,make_pair<string,string>("id","content_left"),next_iter);
+    if(next_iter==curr_iter)
+        return -1;
+    src += next_iter;
+    src_len -= next_iter;
+    curr_iter += next_iter;
 
+    //get the position of the result list;
+    string temp_url;
+    int i=0;
 
+    while(i<10)
+    {
+        if(extractUrl(src,src_len,list_id_baidu.front(),temp_url,next_iter)==-1)
+            return -1;
+        urls.push_back(temp_url);
+        src += next_iter;
+        src_len -= next_iter;
+        i++;
+    }
+    return 0;
+}
+//extract url from the <h3
+int ExtractUrlFromBaidu:: extractUrl(const char* src, size_t src_len,const string& rank,string& url,size_t& curr_iter)
+{
+    curr_iter=0;
+    size_t next_iter=0;
 
+    //loca the next list of the search result:<div   id="1" or other num;
+    getSearchResultContainer(src,src_len,make_pair<string,string>("id",rank),next_iter,"<div ");
+    if (next_iter==curr_iter)
+        return -1;
+
+    src += next_iter;
+    src_len -= next_iter;
+    curr_iter += next_iter;
+    //get the loca of the "<h3 "
+    next_iter =0;
+    extract_obj->extractTag(src,src_len,"<h3",3,next_iter);
+    //get the url location
+    src += next_iter;
+    src_len -= next_iter;
+    curr_iter += next_iter;
+    next_iter =0;
+    extract_obj->extractTag(src,src_len,"<a ",3,next_iter);
+
+    //get the url
+    src += next_iter;
+    src_len -= next_iter;
+    curr_iter += next_iter;
+    next_iter =0;
+    int flag=0;
+    flag = extract_obj->getAttributeOfTag(src,src_len,"href",next_iter);
+    if(flag==-1)
+        return -2;
+    //extract the url
+    src += next_iter;
+    src_len -= next_iter;
+    curr_iter += next_iter;
+    extract_obj->extract(src,src_len,"href",4,url);
+    return 0;
+}
 
 
 

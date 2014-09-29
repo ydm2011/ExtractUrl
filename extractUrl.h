@@ -84,12 +84,38 @@ private:
     std::string tag_container;
     int pattern_position[256];
 };
+
+//extract url interface
+class ExtractUrlInterface{
+public:
+    struct TagNode{
+        std::string tag;
+        std::string attribute_name;
+        std::string attribute_value;
+    };
+    //set the parameters to determain which to extract
+    virtual void init(const std::string& layer_tags,int layers)=0;
+    //get the laocation of the search result container
+    virtual int getSearchResultContainer(const char* src,size_t src_len,
+                                 const std::pair<std::string,std::string>& id,
+                                 size_t& result_loca,
+                                 const std::string& result_tag)=0;
+    //get all the urls of the search result;
+    virtual int getUrls(const char* src,
+                size_t src_len,
+                const std::string& url_tag,
+                std::list<std::string>& urls)=0;
+    virtual bool parseLayerTag(const std::string& lay_tags,int total_layer,
+                               std::list<TagNode>&tag_key_value);
+    virtual ~ExtractUrlInterface(){}
+};
+
 //extract the url from the so.com
-class ExtractUrlFromSo{
+class ExtractUrlFromSo:public ExtractUrlInterface{
 public:
     ExtractUrlFromSo(ExtractContentInterface* extractAlgorithm);
     //set the parameters to determain which to extract
-    void init(const std::string& layers);
+    void init(const std::string& layer_tags,int layers);
     //get the laocation of the search result container
     int getSearchResultContainer(const char* src,size_t src_len,
                                  const std::pair<std::string,std::string>& id,
@@ -105,6 +131,36 @@ protected:
     int extractUrl(const char* src, size_t src_len,bool& is_last,std::string& url,size_t& curr_iter);
 private:
     ExtractContentInterface* extract_obj;
-    std::string pattern;
+
 };
+
+//extract the url from the baidu.com
+class ExtractUrlFromBaidu:public ExtractUrlInterface{
+public:
+    //set the match algorithm
+    ExtractUrlFromBaidu(ExtractContentInterface* extractAlgorithm);
+
+    //set the location of the search result container
+    void init(const std::string& layers_tag,int layers);
+
+    //get the laocation of the search result container
+    int getSearchResultContainer(const char* src,size_t src_len,
+                                 const std::pair<std::string,std::string>& id,
+                                 size_t& result_loca,
+                                 const std::string& result_tag="<div ");
+    //get all the urls of the search result;
+    int getUrls(const char* src,
+                size_t src_len,
+                const std::string& url_tag,
+                std::list<std::string>& urls);
+protected:
+    //this is  the real funtional method of get urls method
+    int extractUrl(const char* src, size_t src_len,const std::string& rank,std::string& url,size_t& curr_iter);
+private:
+    ExtractContentInterface* extract_obj;//the match algorithm
+    std::list<TagNode>  tag_key_value;//parse the html tag layer's node
+    std::list<std::string> list_id_baidu;//baidu result "id"
+};
+
+
 
